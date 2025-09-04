@@ -33,3 +33,16 @@ class TicketPrioritySelect(dc.ui.Select):
     async def callback(self, interaction: dc.Interaction):
         self.view.ticket_priority = self.values[0]
         await interaction.response.defer()
+
+
+class RepoSelect(dc.ui.Select):
+    def __init__(self, *args, **kwargs):
+        options = [
+            dc.SelectOption(label="🎨 Frontend", value="frontend"),
+            dc.SelectOption(label="🎯 Backend", value="backend"),
+        ]
+        super().__init__(placeholder="Repo auswählen", options=options, *args, **kwargs)
+
+    async def callback(self, interaction: dc.Interaction):
+        self.view.repo_select = self.values[0]
+        await interaction.response.defer()

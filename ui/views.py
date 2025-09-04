@@ -1,6 +1,6 @@
 import discord as dc
 from discord.ui import View
-from .select_ui import TicketPrioritySelect, TicketTypeSelect
+from .select_ui import TicketPrioritySelect, TicketTypeSelect, RepoSelect
 from .modal import TicketModal
 
 
@@ -41,7 +41,9 @@ class TicketCreateView(dc.ui.View):
         super().__init__(timeout=None)
         self.ticket_type = None
         self.ticket_priority = None
+        self.repo_select = None
 
+        self.add_item(RepoSelect(row=2))
         self.add_item(TicketTypeSelect(row=0))
         self.add_item(TicketPrioritySelect(row=1))
 
@@ -57,7 +59,7 @@ class TicketCreateView(dc.ui.View):
         label="🎟️ Ticket erstellen",
         style=dc.ButtonStyle.success,
         custom_id="ticket_create_button",
-        row=2,
+        row=3,
     )
     async def create_ticket(self, interaction: dc.Interaction, button: dc.ui.Button):
         if not self.ticket_type or not self.ticket_priority:
@@ -67,5 +69,9 @@ class TicketCreateView(dc.ui.View):
             return
 
         await interaction.response.send_modal(
-            TicketModal(ticket_type=self.ticket_type, priority=self.ticket_priority)
+            TicketModal(
+                ticket_type=self.ticket_type,
+                priority=self.ticket_priority,
+                repo_select=self.repo_select,
+            )
         )

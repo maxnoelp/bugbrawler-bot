@@ -16,3 +16,5 @@ REPO_NAME = os.getenv("REPO_NAME")
 DEV_ROLE_ID = int(os.getenv("DEV_ROLE_ID"))
 
 TICKET_CHANNEL_ID = os.getenv("TICKET_CHANNEL_ID")
+
+REPO_NAME_FRONTEND = os.getenv("REPO_NAME_FRONTEND")

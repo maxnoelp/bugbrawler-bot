@@ -5,10 +5,11 @@ from settings import settings
 
 
 class TicketModal(Modal, title="Ticket erstellen"):
-    def __init__(self, ticket_type, priority):
+    def __init__(self, ticket_type, priority, repo_select):
         super().__init__(title="Ticket erstellen")
         self.ticket_type = ticket_type
         self.ticket_priority = priority
+        self.repo_select = repo_select
 
         self.ticket_title = dc.ui.TextInput(
             label="Ticket Titel",
@@ -36,20 +37,18 @@ class TicketModal(Modal, title="Ticket erstellen"):
 
     async def on_submit(self, interaction: dc.Interaction):
         issue_title = str(self.ticket_title)
-        issue_body = f"""
-        ### Beschreibung
-        {self.ticket_description}
+        issue_body = (
+            f"### Beschreibung\n"
+            f"{(self.ticket_description.value or '-').strip()}\n\n"
+            f"### Technische Beschreibung\n"
+            f"{(self.technical_description.value or '-').strip()}\n"
+        )
 
-        ### Typ
-        **{self.ticket_type}**
+        if self.repo_select == "frontend":
+            url = f"https://api.github.com/repos/{settings.REPO_OWNER}/{settings.REPO_NAME_FRONTEND}/issues"
+        elif self.repo_select == "backend":
+            url = f"https://api.github.com/repos/{settings.REPO_OWNER}/{settings.REPO_NAME}/issues"
 
-        ### Priorität
-        __{self.ticket_priority}__
-
-        ### Technische Beschreibung
-        {self.technical_description}
-        """
-        url = f"https://api.github.com/repos/{settings.REPO_OWNER}/{settings.REPO_NAME}/issues"
         headers = {"Authorization": f"token {settings.GITHUB_TOKEN}"}
         data = {
             "title": issue_title,
