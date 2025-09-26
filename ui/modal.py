@@ -79,7 +79,83 @@ class TicketModal(Modal, title="Ticket erstellen"):
             issue_number = issue_data["number"]
             role = interaction.guild.get_role(settings.DEV_ROLE_ID)
 
-            # Create embedded message for todo channel
+            # Create a dedicated channel for this ticket
+            channel_name = f"DEV-{self.repo_select}-{issue_title.lower().replace(' ', '-')[:20]}"
+            
+            # Find the "Support Tickets" category
+            category = None
+            for cat in interaction.guild.categories:
+                if cat.name.lower() == "support tickets":
+                    category = cat
+                    break
+            
+            # If "Support Tickets" category doesn't exist, fallback to main ticket category
+            if not category:
+                category = interaction.guild.get_channel(int(settings.TICKET_CREATE_CHANNEL_ID)).category
+            
+            # Set up channel permissions - only specific roles can see the channel
+            overwrites = {
+                interaction.guild.default_role: dc.PermissionOverwrite(read_messages=False),
+                interaction.guild.get_role(settings.DEV_ROLE_ID): dc.PermissionOverwrite(
+                    read_messages=True, send_messages=True
+                ),
+            }
+            
+            # Add staff roles if they exist
+            if settings.STAFF_ROLE_ID:
+                staff_role = interaction.guild.get_role(settings.STAFF_ROLE_ID)
+                if staff_role:
+                    overwrites[staff_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True
+                    )
+            
+            if settings.ADMIN_ROLE_ID:
+                admin_role = interaction.guild.get_role(settings.ADMIN_ROLE_ID)
+                if admin_role:
+                    overwrites[admin_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True, manage_channels=True
+                    )
+                    
+            if settings.OWNER_ROLE_ID:
+                owner_role = interaction.guild.get_role(settings.OWNER_ROLE_ID)
+                if owner_role:
+                    overwrites[owner_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True, manage_channels=True
+                    )
+            if settings.HEAD_STAFF_ID:
+                head_staff_role = interaction.guild.get_role(settings.HEAD_STAFF_ID)
+                if head_staff_role:
+                    overwrites[head_staff_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True, manage_channels=True
+                    )
+            if settings.HEAD_MOD_ID:
+                head_mod_role = interaction.guild.get_role(settings.HEAD_MOD_ID)
+                if head_mod_role:
+                    overwrites[head_mod_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True, manage_channels=True
+                    )
+            if settings.TRIAL_MOD_ID:
+                trial_mod_role = interaction.guild.get_role(settings.TRIAL_MOD_ID)
+                if trial_mod_role:
+                    overwrites[trial_mod_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True
+                    )
+            if settings.DESIGNER_ROLE_ID:
+                designer_role = interaction.guild.get_role(settings.DESIGNER_ROLE_ID)
+                if designer_role:
+                    overwrites[designer_role] = dc.PermissionOverwrite(
+                        read_messages=True, send_messages=True, manage_messages=True
+                    )
+            
+            # Create the new ticket channel with permissions
+            ticket_channel = await interaction.guild.create_text_channel(
+                name=channel_name,
+                category=category,
+                topic=f"Ticket #{issue_number}: {issue_title}",
+                overwrites=overwrites
+            )
+
+            # Create embedded message for the dedicated ticket channel
             embed = dc.Embed(
                 title="🎫 New Ticket Created",
                 description=f"**{issue_title}**",
@@ -96,33 +172,59 @@ class TicketModal(Modal, title="Ticket erstellen"):
             )
             embed.add_field(name="Type", value=self.ticket_type.title(), inline=True)
             embed.add_field(name="Status", value="Waiting for Assignment", inline=False)
+            embed.add_field(
+                name="Description", 
+                value=self.ticket_description.value or "No description provided", 
+                inline=False
+            )
+            if self.technical_description.value:
+                embed.add_field(
+                    name="Technical Description", 
+                    value=self.technical_description.value, 
+                    inline=False
+                )
 
             # Create view with assignee dropdown
             view = TicketTodoView(
                 settings.REPO_OWNER, repo_name, issue_number, issue_url
             )
 
-            # Post to todo channel
-            ticket_channel = interaction.guild.get_channel(
-                int(settings.TICKET_TODO_CHANNEL_ID)
-            )
-
-            if not ticket_channel:
-                await interaction.response.send_message(
-                    "Todo channel not found! Check TICKET_TODO_CHANNEL_ID in settings.",
-                    ephemeral=True,
-                )
-                return
-
+            # Post to the dedicated ticket channel
             await ticket_channel.send(
                 f"{role.mention} New ticket requires assignment:",
                 embed=embed,
                 view=view,
             )
 
+            # Also post a summary in the main todo channel for visibility
+            main_todo_channel = interaction.guild.get_channel(
+                int(settings.TICKET_TODO_CHANNEL_ID)
+            )
+            
+            if main_todo_channel:
+                summary_embed = dc.Embed(
+                    title="🎫 New Ticket Channel Created",
+                    description=f"**{issue_title}**",
+                    color=dc.Color.green(),
+                )
+                summary_embed.add_field(
+                    name="Channel", value=ticket_channel.mention, inline=True
+                )
+                summary_embed.add_field(
+                    name="GitHub Issue", value=f"[View Issue]({issue_url})", inline=True
+                )
+                summary_embed.add_field(
+                    name="Priority", value=self.ticket_priority.title(), inline=True
+                )
+                
+                await main_todo_channel.send(embed=summary_embed)
+
             # Confirm creation to user
             await interaction.response.send_message(
-                f"✅ Ticket created successfully: {issue_url}", ephemeral=True
+                f"✅ Ticket created successfully!\n"
+                f"📌 Channel: {ticket_channel.mention}\n"
+                f"🔗 GitHub Issue: {issue_url}", 
+                ephemeral=True
             )
 
         else:

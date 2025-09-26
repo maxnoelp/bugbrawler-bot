@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  bot:
+    build: .
+    image: bug-brawler:dev
+    working_dir: /app
+    command: python -m watchfiles "python main.py"
+    volumes:
+      - ./:/app:cached
+    env_file:
+      - .env
+    restart: unless-stopped
